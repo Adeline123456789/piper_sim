@@ -31,6 +31,11 @@ class MujocoBackend:
         self.data = mujoco.MjData(self.model)
         self.substeps = self.manifest["substeps"]
         self.rig = self.manifest["camera_rig"]
+        if self.task and hasattr(self.task_adapter, "configure_cameras"):
+            self.task_adapter.configure_cameras(self.model, self.rig, cfg, self.task)
+        self.initial_position = np.asarray(
+            self.task.config.get("robot_start_si", cfg["robot"]["home"]*2)
+            if self.task else cfg["robot"]["home"]*2)
         self.enable_cameras = cameras
         self.indices = {}
         for side in ARMS:
@@ -44,10 +49,7 @@ class MujocoBackend:
             if viewer:
                 from mujoco import viewer as mj_viewer
                 self.viewer = mj_viewer.launch_passive(self.model, self.data)
-                self.viewer.cam.lookat[:] = [.25, 0, .4]
-                self.viewer.cam.distance = 2.3
-                self.viewer.cam.azimuth = 135
-                self.viewer.cam.elevation = -28
+                self._overview_camera(self.viewer.cam)
         except BaseException:
             self.close()
             raise
@@ -61,8 +63,7 @@ class MujocoBackend:
         if self.task:
             self.task.reset(seed, randomize)
             self.task_adapter.reset_task(self.model, self.data, self.task)
-        home = np.array(self.cfg["robot"]["home"]*2)
-        self.set_observation_state(home)
+        self.set_observation_state(self.initial_position)
 
     def set_observation_state(self, position):
         """Exact state placement for deterministic sim audits, within model limits."""
@@ -148,6 +149,13 @@ class MujocoBackend:
              "engine": "mujoco", "engine_version": mujoco.__version__,
              **extras})
 
+    def _overview_camera(self, camera):
+        view = self.task.config.get("overview", {}) if self.task else {}
+        camera.lookat[:] = view.get("lookat", [.25, 0, .4])
+        camera.distance = view.get("distance", 2.3)
+        camera.azimuth = view.get("azimuth", 135)
+        camera.elevation = view.get("elevation", -28)
+
     def save_overview(self, path):
         from PIL import Image
         path = Path(path).resolve()
@@ -155,9 +163,7 @@ class MujocoBackend:
             raise FileExistsError(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         camera = mujoco.MjvCamera()
-        camera.lookat[:] = [.25, 0, .4]
-        camera.distance = 2.3
-        camera.azimuth, camera.elevation = 135, -28
+        self._overview_camera(camera)
         Image.fromarray(self._render(camera, 1280, 720)).save(path)
 
     def close(self):

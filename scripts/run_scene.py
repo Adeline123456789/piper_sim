@@ -82,7 +82,7 @@ def main():
         from piper_sim.safety import CommandGuard
         input_guard = CommandGuard()
         last_input_sequence = -1
-        initial = np.array(cfg["robot"]["home"]*2)
+        initial = np.array(getattr(sim, "initial_position", cfg["robot"]["home"]*2))
         control = {"status": "waiting", "applied_sequence": -1, "rejected_sequence": -1,
                    "error": None, "applied_target": initial.tolist()}
         trajectory = None
@@ -173,7 +173,7 @@ def main():
                 reset = server.poll_reset()
                 if reset:
                     sim.reset(seed=reset["seed"], randomize=reset["randomize"])
-                    initial = np.array(cfg["robot"]["home"]*2)
+                    initial = np.array(getattr(sim, "initial_position", cfg["robot"]["home"]*2))
                     input_guard = CommandGuard()
                     last_input_sequence = -1
                     control = {"status": "waiting" if api_controls else "read_only",

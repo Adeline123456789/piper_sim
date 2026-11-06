@@ -1,0 +1,15 @@
+name: real_straw
+seed: 19
+# Tabletop pickup variant, state[0] of episode_000019. SI width assumes 95 mm stroke.
+robot_start_si: [0, 0, 0, 0, 0.0538085, 0, 0.0942, 0, 0, 0, 0, 0.0576482, 0, 0.0945]
+overhead_row_offset_px: -30
+randomization: {enabled: false, object_jitter_m: 0.015, straw_yaw_jitter_deg: 10}
+mat_xy_m: [0.242, -0.008]
+mat_size_m: [0.300, 0.446, 0.002]
+cup_xy_m: [0.301, 0.074]
+cup: {height_m: 0.112, base_radius_m: 0.029, lid_radius_m: 0.044, aperture_radius_m: 0.0065, mass_kg: 0.11}
+straw_xy_m: [0.281, -0.101]
+straw: {length_m: 0.216, radius_m: 0.0045, mass_kg: 0.004, yaw_deg: 24}
+minimum_depth_m: 0.025
+hold_seconds: 0.30
+room_backdrop: {pos: [2.42256, 0.30242, -0.12030], quat: [0.572396, 0.415162, -0.415266, -0.572326]}

@@ -1,4 +1,6 @@
 """Track individual CAN feedback frames: SDK aggregate timestamps are insufficient."""
+from copy import deepcopy
+import struct
 import threading
 import time
 
@@ -12,6 +14,7 @@ def tracked_sdk(base):
         def __init__(self, *args, **kwargs):
             self.feedback_lock = threading.RLock()
             self.frame_times = {}
+            self.raw_feedback = {}
             super().__init__(*args, **kwargs)
             # This supplied SDK logs failed sends instead of raising from
             # JointCtrl/GripperCtrl. Promote transport failures at its CAN
@@ -34,5 +37,26 @@ def tracked_sdk(base):
                 super().ParseCANFrame(message)
                 if message is not None and not message.is_error_frame and message.dlc == 8:
                     self.frame_times[message.arbitration_id] = time.monotonic()
+                    if 0x2A5 <= message.arbitration_id <= 0x2A8:
+                        self.raw_feedback[message.arbitration_id] = bytes(message.data)
+
+        def GetArmJointMsgs(self):
+            # Some SDK releases clamp received feedback with the command limits.
+            # Preserve signed encoder feedback while keeping SDK command limiting active.
+            with self.feedback_lock:
+                result = deepcopy(super().GetArmJointMsgs())
+                for index, identifier in enumerate((0x2A5, 0x2A6, 0x2A7)):
+                    if identifier in self.raw_feedback:
+                        for offset, angle in enumerate(struct.unpack(">ii", self.raw_feedback[identifier])):
+                            setattr(result.joint_state, f"joint_{2*index+offset+1}", angle)
+                return result
+
+        def GetArmGripperMsgs(self):
+            with self.feedback_lock:
+                result = deepcopy(super().GetArmGripperMsgs())
+                if 0x2A8 in self.raw_feedback:
+                    result.gripper_state.grippers_angle = int.from_bytes(
+                        self.raw_feedback[0x2A8][:4], "big", signed=True)
+                return result
 
     return TrackedSDK

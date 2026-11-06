@@ -88,7 +88,9 @@ class PiperBackend:
         with self.lock:
             if self.closed or self.fault:
                 raise RuntimeError("Reconnect after a stop/fault")
-            self.read()  # require feedback before any control command
+            current = self.read().position
+            if np.any(current < self.lower) or np.any(current > self.upper):
+                raise RuntimeError("Raw physical pose exceeds command limits; align/calibrate before arming")
             # Existing physical enable is required; never implicitly power the arms.
             for side, sdk in self.arms.items():
                 with sdk.feedback_lock:

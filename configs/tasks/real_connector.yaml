@@ -1,0 +1,31 @@
+name: real_connector
+seed: 1
+overview: {lookat: [0.29, -0.17, 0.07], distance: 0.85, azimuth: 15, elevation: -58}
+# Metres. CAD station + tabletop projection of episode 000001.
+# Each complete arm and its base plate moved away from the central mast.
+arm_outward_offset_m: 0.010
+robot_start_si: [0, 0, 0, 0, 0, 0, 0.0752, 0.7644542, 1.8684448, -1.5749153, -0.0786794, 1.2196012, 0.4062428, 0.0922]
+overhead_row_offset_px: -42
+# Effective rotation in the right RGB optical frame (Rodrigues vector, radians).
+# Estimated in episode 000001, checked in 000075. Rendering only.
+right_wrist_optical_rotvec: [-0.0508, 0.0158, 0.2750]
+randomization: {enabled: false, fixture_jitter_m: 0.004}
+holder_xy_m: [0.316, -0.372]
+strip_xy_m: [0.305, 0.001]
+strip_size_m: [0.212, 0.076, 0.030]
+# Measured outer envelope includes the raised keys. Face details estimated in the
+# rectified 143357 product photo; module 0 is dual USB-A, 1..3 are five-hole AC.
+key_projection_m: 0.004
+slot_clearance_m: 0.0008
+first_module_xy_m: [-0.077, -0.021]
+button_y_m: 0.021
+outlet_pitch_m: 0.0425
+# rightmost of the four blue modules in the central view
+target_index: 3
+hold_seconds: 0.30
+# Envelope estimated from the wrist closeup and measured grasp opening.
+yellow_plug: {face_radius_m: 0.022, rim_height_m: 0.007, housing_height_m: 0.054}
+black_charger: {housing_size_m: [0.038, 0.024, 0.050]}
+# The November photos and September recording show different surroundings.
+workstation_background: photos  # photos | recording
+room_backdrop: {pos: [2.43846, 0.30242, 0.01237], quat: [0.561018, 0.430408, -0.430514, -0.560951]}
