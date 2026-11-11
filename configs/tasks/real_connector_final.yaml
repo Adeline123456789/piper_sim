@@ -16,7 +16,7 @@ black_charger:
   - 0.024
   - 0.05
 button_y_m: 0.021
-camera_calibration: /mnt/a2c7e415-58c1-4de8-be3d-8374e8e93d3e/sim_real_plug/calibration/sysid_strip_contact_20261110/metric_camera_candidate.json
+camera_calibration: configs/calibration/plug_camera_candidate.json
 first_module_xy_m:
 - -0.077
 - -0.021
@@ -81,7 +81,7 @@ target_index: 3
 workstation_background: photos
 yellow_pin_sliding_friction: 0.2
 yellow_plug:
-  mass_kg: 0.0409  # User weighed the unwired plug, 2026-11-11; inertia/COM remain estimates.
+  mass_kg: 0.0409
   center_of_mass_m:
   - -0.0009826436
   - 0.0048003229
