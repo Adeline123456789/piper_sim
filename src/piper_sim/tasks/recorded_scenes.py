@@ -70,9 +70,16 @@ class RealConnector(RecordedTask):
     def place(self, rng, enabled):
         c = self.config
         jitter = c["randomization"]["fixture_jitter_m"] * enabled
-        q = quat_z(-np.pi / 2)
-        board = pose(c["holder_xy_m"] + rng.uniform(-jitter, jitter, 2), self.top, q)
-        strip = pose(c["strip_xy_m"] + rng.uniform(-jitter, jitter, 2), self.top, q)
+        def fixture(name):
+            r = c['randomization']
+            bounds = r.get(name+'_xy_bounds_m')
+            xy = (rng.uniform(*np.asarray(bounds).T) if enabled and bounds is not None
+                  else c[name+'_xy_m'] + rng.uniform(-jitter, jitter, 2))
+            yaw_bounds = r.get(name+'_yaw_bounds_deg')
+            yaw = (rng.uniform(*yaw_bounds) if enabled and yaw_bounds is not None
+                   else c.get(name+'_yaw_deg', -90.))
+            return pose(xy, self.top, quat_z(np.deg2rad(yaw)))
+        board, strip = fixture('holder'), fixture('strip')
         poses = {"board": board, **{n: self.fixture.target_pose(n, board) for n in self.dynamic}}
         self.fixture.layout["poses"] = poses
         return {**poses, "strip": strip}

@@ -119,3 +119,43 @@ def test_connector_arm_mounts_and_wrist_reference_frames():
     finally:
         current.close()
         reference.close()
+
+
+def test_measured_camera_follows_parent_and_overrides_nominal_offset(tmp_path):
+    import json
+    import mujoco
+    import yaml
+    from piper_sim.backends.mujoco import MujocoBackend
+    from piper_sim.config import ROOT, load
+
+    scene = yaml.safe_load((ROOT / 'configs/tasks/real_connector.yaml').read_text())
+    k = [[604., 0., 327.], [0., 604., 246.], [0., 0., 1.]]
+    local = np.eye(4)
+    local[:3, 3] = [.03, -.02, .08]
+    measured = dict(K=k, serial='offline-test', status='test calibration',
+                    raw_distortion=dict(model='none', coeffs=[0.] * 5))
+    calibration = tmp_path / 'cameras.json'
+    calibration.write_text(json.dumps(dict(cameras={
+        'overhead': measured,
+        'right_wrist': dict(measured, parent_body='right/link6', T_parent_rgb=local.tolist())})))
+    scene.update(camera_calibration=str(calibration), overhead_row_offset_px=70.,
+                 holder_yaw_deg=-83., strip_yaw_deg=-89.)
+    sim = MujocoBackend(dict(load(), task_scene=scene))
+    try:
+        for name in ('overhead', 'right_wrist'):
+            np.testing.assert_allclose(sim.rig['cameras'][name]['rgb']['intrinsic_matrix'], k)
+            np.testing.assert_allclose(sim.model.cam_intrinsic[sim.model.camera(name).id],
+                                       [604./640, 604./480, (320.-327.-.5)/640, (246.+.5-240)/480])
+        for delta in (0., .2):
+            sim.data.qpos[sim.indices['right']['qpos'][5]] += delta
+            mujoco.mj_forward(sim.model, sim.data)
+            parent = sim.data.body('right/link6')
+            camera = sim.data.camera('right_wrist')
+            rot = parent.xmat.reshape(3, 3)
+            np.testing.assert_allclose(camera.xpos, parent.xpos + rot @ local[:3, 3], atol=1e-12)
+            np.testing.assert_allclose(camera.xmat.reshape(3, 3), rot @ np.diag([1., -1., -1.]), atol=1e-12)
+        for body, yaw in [('task/board', -83.), ('task/strip', -89.)]:
+            rotation = sim.data.body(body).xmat.reshape(3, 3)
+            assert np.rad2deg(np.arctan2(rotation[1, 0], rotation[0, 0])) == pytest.approx(yaw)
+    finally:
+        sim.close()

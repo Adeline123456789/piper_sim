@@ -33,6 +33,10 @@ class MujocoBackend:
         self.rig = self.manifest["camera_rig"]
         if self.task and hasattr(self.task_adapter, "configure_cameras"):
             self.task_adapter.configure_cameras(self.model, self.rig, cfg, self.task)
+        self.appearance = None
+        if self.task and self.task.config.get('appearance', {}).get('profile') == 'office':
+            from ..tasks.connector_appearance import EpisodeAppearance
+            self.appearance = EpisodeAppearance(self.model, self.rig, self.task.config['appearance'])
         self.initial_position = np.asarray(
             self.task.config.get("robot_start_si", cfg["robot"]["home"]*2)
             if self.task else cfg["robot"]["home"]*2)
@@ -63,6 +67,8 @@ class MujocoBackend:
         if self.task:
             self.task.reset(seed, randomize)
             self.task_adapter.reset_task(self.model, self.data, self.task)
+        if self.appearance:
+            self.appearance.reset(self.task.layout['seed'])
         self.set_observation_state(self.initial_position)
 
     def set_observation_state(self, position):
@@ -147,7 +153,7 @@ class MujocoBackend:
             {name: self.sim_time for name in images},
             {"image_timestamp_clock": "simulation", "cameras": poses, "physics_time": self.sim_time,
              "engine": "mujoco", "engine_version": mujoco.__version__,
-             **extras})
+             'appearance': self.appearance.sample if self.appearance else None, **extras})
 
     def _overview_camera(self, camera):
         view = self.task.config.get("overview", {}) if self.task else {}

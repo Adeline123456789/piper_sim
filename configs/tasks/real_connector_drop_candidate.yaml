@@ -1,0 +1,86 @@
+name: real_connector
+seed: 1
+overview:
+  lookat:
+  - 0.29
+  - -0.17
+  - 0.07
+  distance: 0.85
+  azimuth: 15
+  elevation: -58
+arm_outward_offset_m: 0.01
+robot_start_si:
+- 0
+- 0
+- 0
+- 0
+- 0
+- 0
+- 0.0752
+- 0.7644542
+- 1.8684448
+- -1.5749153
+- -0.0786794
+- 1.2196012
+- 0.4062428
+- 0.0922
+overhead_row_offset_px: 0
+randomization:
+  enabled: false
+  fixture_jitter_m: 0.004
+holder_xy_m:
+- 0.2998378541507313
+- -0.3502755920043748
+strip_xy_m:
+- 0.3147136244121105
+- 0.01961635939458454
+strip_size_m:
+- 0.212
+- 0.076
+- 0.03
+key_projection_m: 0.0017
+slot_clearance_m: 0.0008
+first_module_xy_m:
+- -0.077
+- -0.021
+button_y_m: 0.021
+outlet_pitch_m: 0.0425
+target_index: 3
+hold_seconds: 0.3
+yellow_plug:
+  face_radius_m: 0.022
+  rim_height_m: 0.007
+  housing_height_m: 0.054
+black_charger:
+  housing_size_m:
+  - 0.038
+  - 0.024
+  - 0.05
+workstation_background: photos
+room_backdrop:
+  pos:
+  - 2.43846
+  - 0.30242
+  - 0.01237
+  quat:
+  - 0.561018
+  - 0.430408
+  - -0.430514
+  - -0.560951
+camera_calibration: configs/calibration/plug_rgbd_20261108.json
+holder_yaw_deg: -89.54903069259528
+strip_yaw_deg: -89.54903069259528
+alignment_status: provisional RGB-D visual registration, not qualified for hardware
+  motion
+appearance:
+  profile: office
+  randomization:
+    enabled: false
+    light_gain:
+    - 0.9
+    - 1.1
+    camera_translation_m: 0.002
+    camera_rotation_deg: 0.4
+yellow_torsional_friction_m: 0.00013
+contact_calibration_status: candidate fitted to real failure 05; not measured material
+  friction

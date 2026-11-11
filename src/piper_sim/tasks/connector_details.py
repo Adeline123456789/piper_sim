@@ -100,7 +100,10 @@ def dress_gray_holder(root, fixture):
 def dress_plugs(asset, world, task):
     yellow = world.find("body[@name='task/yellow_plug']")
     spec = task.config["yellow_plug"]
+    if "center_of_mass_m" in spec:
+        yellow.find("inertial").set("pos", nums(spec["center_of_mass_m"]))
     radius, height = spec["face_radius_m"], spec["housing_height_m"]
+    zs = height / .054
     yellow.remove(yellow.find("geom[@name='task/yellow_plug/handle']"))
     yellow.find("geom[@name='task/yellow_plug/rim']").set("rgba", nums(YELLOW))
     # Circular flange becomes a flattened grip with rounded shoulders and a hollow cable entry.
@@ -108,17 +111,32 @@ def dress_plugs(asset, world, task):
     edge = Polygon(outline(.024, .030, .0085)).boundary
     rim = ellipse(radius, radius)
     neck = np.array([edge.intersection(LineString([(0,0),v])).coords[0] for v in rim])
+    neck *= np.asarray(spec.get("neck_scale_xy", [1., 1.]))
     offset = np.array([.002, 0.])  # the cable entry sits behind the screw boss
     shoulder = .62*rim + .38*neck
-    rings = [ring(rim, .007), ring(rim*.97, .010), ring(shoulder, .015),
-             ring(neck*1.15 + .65*offset, .023), ring(neck*1.04 + offset, .035),
-             ring(neck + offset, height-.007)]
+    rings = [ring(rim, .007*zs), ring(rim*.97, .010*zs), ring(shoulder, .015*zs),
+             ring(neck*1.15 + .65*offset, .023*zs), ring(neck*1.04 + offset, .035*zs),
+             ring(neck + offset, height-.007*zs)]
     vertices, faces = loft(rings)
-    solid(asset,yellow,"plug/grip",vertices,faces,YELLOW,friction=".7 .003 .0001")
+    solid(asset,yellow,"plug/grip",vertices,faces,YELLOW,**VISUAL)
+    # Homothetic layers are convex; keep tetrahedra only where the side quads bend inward.
+    for i, (lower, upper) in enumerate(zip(rings[:-1], rings[1:])):
+        if i in (0, 3, 4):
+            points, triangles = loft([lower, upper])
+            solid(asset,yellow,f"plug/grip_contact/{i}/0/0",points,triangles,(0,0,0,0),
+                  group="3",friction=".7 .003 .0001")
+            continue
+        for j in range(len(lower)):
+            k = (j+1) % len(lower)
+            wedge = np.concatenate([np.array([r.mean(axis=0),r[j],r[k]]) for r in (lower,upper)])
+            for t, ids in enumerate(((0,1,2,5),(0,1,5,4),(0,3,4,5))):
+                solid(asset,yellow,f"plug/grip_contact/{i}/{j}/{t}",wedge[list(ids)],
+                      [(0,2,1),(0,1,3),(1,2,3),(2,0,3)],(0,0,0,0),
+                      group="3",friction=".7 .003 .0001")
     # The rounded lip surrounds a recessed cable opening. A ring mesh leaves it visible.
     opening = ellipse(.0060,.0058) + offset
-    layers = [ring(neck+offset,height-.007),ring(neck*.97+offset,height-.0018),
-              ring(neck*.87+offset,height),ring(opening,height),ring(opening,height-.007)]
+    layers = [ring(neck+offset,height-.007*zs),ring(neck*.97+offset,height-.0018*zs),
+              ring(neck*.87+offset,height),ring(opening,height),ring(opening,height-.007*zs)]
     faces = []
     for start in range(0, (len(layers)-1)*len(neck), len(neck)):
         for i in range(len(neck)):
@@ -127,20 +145,28 @@ def dress_plugs(asset, world, task):
     solid(asset,yellow,"plug/entry_rim",np.concatenate(layers),faces,YELLOW,**VISUAL)
     # Closed convex pieces provide the corresponding fingertip contact around the entry.
     cap = Polygon(neck+offset).difference(Polygon(opening))
-    extrude(asset,yellow,"plug/entry_contact",cap,height-.007,height,(0,0,0,0),group="3")
-    geom(yellow,"cylinder",[.006,.0001],[*offset,height-.0069],DARK,**VISUAL)
-    geom(yellow,"cylinder",[.002,.0001],[*offset,height-.0067],GOLD,**VISUAL)
+    extrude(asset,yellow,"plug/entry_contact",cap,height-.007*zs,height,(0,0,0,0),group="3")
+    geom(yellow,"cylinder",[.006,.0001],[*offset,height-.0069*zs],DARK,**VISUAL)
+    geom(yellow,"cylinder",[.002,.0001],[*offset,height-.0067*zs],GOLD,**VISUAL)
     # Side screw on the molded boss, plus raised traction ribs on the flat face.
     for name, rad, x, depth, color in [
         ("boss", .004, -.0148, .0028, YELLOW), ("screw", .0026, -.0178, .00045, GOLD)
     ]:
-        geom(yellow,"cylinder",[rad,depth],[x,0,.016],color, name="plug/"+name,
+        geom(yellow,"cylinder",[rad,depth],[x,0,.016*zs],color, name="plug/"+name,
              quat=".70710678 0 -.70710678 0", **VISUAL)
     for width, height in [(.00155,.00028),(.00028,.00155)]:
-        geom(yellow,"box",[.0001,width,height],[-.01825,0,.016],DARK,**VISUAL)
+        geom(yellow,"box",[.0001,width,height],[-.01825,0,.016*zs],DARK,**VISUAL)
     for z in (.030,.034,.038,.042):
         geom(yellow,"capsule",[.00045],[0,0,0],YELLOW,**VISUAL,
-             fromto=nums([-.0109,-.006,z,-.0109,.006,z])).attrib.pop("pos")
+             fromto=nums([-.0109,-.006,z*zs,-.0109,.006,z*zs])).attrib.pop("pos")
+
+    housing_offset = np.r_[spec.get("housing_offset_xy_m", [0., 0.]), 0.]
+    for part in yellow.findall('geom'):
+        if not part.get('name', '').startswith('task/yellow_plug/pin_'):
+            if 'fromto' in part.attrib:
+                part.set('fromto', nums(np.fromstring(part.get('fromto'), sep=' ').reshape(2, 3) + housing_offset))
+            else:
+                part.set('pos', nums(np.fromstring(part.get('pos', '0 0 0'), sep=' ') + housing_offset))
 
     black = world.find("body[@name='task/black_charger']")
     w,d,h = task.config["black_charger"]["housing_size_m"]

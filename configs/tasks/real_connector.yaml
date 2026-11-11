@@ -28,4 +28,12 @@ yellow_plug: {face_radius_m: 0.022, rim_height_m: 0.007, housing_height_m: 0.054
 black_charger: {housing_size_m: [0.038, 0.024, 0.050]}
 # The November photos and September recording show different surroundings.
 workstation_background: photos  # photos | recording
+appearance:
+  profile: office
+  # Keep measured views deterministic for alignment; enable for training only.
+  randomization:
+    enabled: false
+    light_gain: [0.90, 1.10]
+    camera_translation_m: 0.002
+    camera_rotation_deg: 0.4
 room_backdrop: {pos: [2.43846, 0.30242, 0.01237], quat: [0.561018, 0.430408, -0.430514, -0.560951]}

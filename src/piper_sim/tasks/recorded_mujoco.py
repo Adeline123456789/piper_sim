@@ -1,5 +1,6 @@
 """Contact geometry and video-mode cameras for the two recorded tabletop tasks."""
 from pathlib import Path
+import json
 import xml.etree.ElementTree as ET
 
 import numpy as np
@@ -14,6 +15,9 @@ from .recorded_scenes import RealConnector
 
 def configure_cameras(model, rig, cfg, task):
     profiles, _ = load_profiles(cfg)
+    calibration = {}
+    if task.config.get("camera_calibration"):
+        calibration = json.loads((ROOT/task.config["camera_calibration"]).read_text())["cameras"]
     for name, cam in rig["cameras"].items():
         stream = {"mode": "crop_nominal", "resolution": [640, 480]}
         rgb = stream_rgb(profiles["models"][cam["model"]], stream)
@@ -52,6 +56,33 @@ def configure_cameras(model, rig, cfg, task):
             cam["reference_world_pose"] = reference.tolist()
             cam["extrinsic_source"] = "CAD with recorded connector RGB orientation fit"
             mujoco.mju_mat2Quat(model.cam_quat[i], (optical @ np.diag([1.,-1.,-1.])).ravel())
+        if name in calibration:
+            import mujoco
+            measured = calibration[name]
+            k = np.asarray(measured["K"], dtype=float)
+            rgb["intrinsic_matrix"] = k.tolist()
+            rgb["calibration_status"] = measured["status"]
+            rgb["source_serial"] = measured["serial"]
+            rgb["raw_distortion"] = measured["raw_distortion"]
+            rgb["render_projection"] = "undistorted pinhole using device K"
+            if "T_parent_rgb" in measured:
+                parent = model.body(int(model.cam_bodyid[i])).name
+                if parent != measured["parent_body"]:
+                    raise ValueError(f"Camera {name} calibration parent {measured['parent_body']} != {parent}")
+                transform = np.asarray(measured["T_parent_rgb"], dtype=float)
+                model.cam_pos[i] = transform[:3,3]
+                mujoco.mju_mat2Quat(model.cam_quat[i],
+                    (transform[:3,:3] @ np.diag([1.,-1.,-1.])).ravel())
+                cam["extrinsic_source"] = measured["status"]
+                cam["calibration_parent_body"] = parent
+                cam["T_parent_rgb"] = transform.tolist()
+                cam["position"] = transform[:3,3].tolist()
+                quaternion = np.empty(4)
+                mujoco.mju_mat2Quat(quaternion, transform[:3,:3].ravel())
+                cam["rotation_wxyz_ros"] = quaternion.tolist()
+                reference = np.eye(4) if parent == "world" else np.asarray(
+                    rig["mounts"][name.split("_")[0]]["reference_link6_world"])
+                cam["reference_world_pose"] = (reference @ transform).tolist()
         model.cam_resolution[i] = [640, 480]
         model.cam_intrinsic[i] = [k[0, 0]/640, k[1, 1]/480,
                                   (320-k[0, 2]-.5)/640, (k[1, 2]+.5-240)/480]
@@ -183,6 +214,16 @@ def compose_model(path, task):
         world.findall("light")[1].set("diffuse", ".49 .49 .49")
         ET.SubElement(world, "light", pos="-1 0 0.8", dir="1 0 -.5", directional="true",
                       diffuse=".31 .31 .31", specular=".07 .07 .07", castshadow="false")
+    if task.config.get("robot_gravity_compensation", False):
+        # Set before compilation so MuJoCo constructs its gravity-compensation
+        # body list. Task objects retain gravity. Used by explicit collection
+        # profiles only; the reference task defaults are unchanged.
+        for body in world.iter("body"):
+            if body.get("name", "").startswith(("left/", "right/")):
+                body.set("gravcomp", "1")
+    if isinstance(task, RealConnector) and task.config.get('appearance', {}).get('profile') == 'office':
+        from .connector_appearance import office_appearance
+        office_appearance(root)
     return ET.tostring(root, encoding="unicode")
 
 
