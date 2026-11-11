@@ -17,7 +17,7 @@ tar --zstd -xf downloads/original_workspace_source.tar.zst -C restored/original_
 tar --zstd -xf downloads/piper_use_source.tar.zst -C restored
 ```
 
-分卷需全部下载，顺序为三位数字后缀。每个分卷512MiB以内，校验值在SHA256SUMS；压缩包不含虚拟环境、Git数据库和Python缓存。它们不是采集数据；依赖快照见`requirements/*archive-freeze.txt`。源码、RGB-D原帧、视频、CAN/指令记录、轨迹、候选参数、报告和对比视频均保留。
+分卷需全部下载，顺序为四位数字后缀。每个数据分卷32MiB以内（源码包独立提供），校验值在SHA256SUMS；压缩包不含虚拟环境、Git数据库和Python缓存。它们不是采集数据；依赖快照见`requirements/*archive-freeze.txt`。源码、RGB-D原帧、视频、CAN/指令记录、轨迹、候选参数、报告和对比视频均保留。
 
 恢复后的关键目录：
 
